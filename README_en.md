@@ -26,6 +26,14 @@ So this project plans to solve this problem, from **source code compilation, ima
 3. Call the script in the root directory of an **<u>OH ArkTS project</u>**! For example, `oh-sync-project`. 4;
 4. For a new ArkTS project, execute `oh-sync-project` once;
 
+> The commands are as follows:
+>
+> - `oh-sync-project`: synchronize the current ArkTS project;
+> - `oh-sign-hap`: sign the hap package for the current ArkTS project;
+> - `oh-build-hap`: build only ArkTS projects as hap packages;
+> - `oh-install-hap`: install only the output hap packages of the ArkTS project to the development board;
+> - `oh-build-and-run`: build hap, sign and run the project on the development board;
+
 ### Burning an image
 
 > Note: Use the `upgrade_tool` burn tool, which is currently only available for rk3568;

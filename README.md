@@ -29,6 +29,16 @@
 3. 在一个 **<u>OH ArkTS 项目的 根目录</u>** 下调用脚本即可！例如 `oh-sync-project`；
 4. 对于一个新的 ArkTS 项目，需要先执行一次 `oh-sync-project`；
 
+> 指令如下：
+>
+> - `oh-sync-project`：同步当前 ArkTS 项目；
+> - `oh-sign-hap`：为当前 ArkTS 项目的 hap 包签名；
+> - `oh-build-hap`：仅构建 ArkTS 项目为 hap 包；
+> - `oh-install-hap`：仅安装 ArkTS 项目的输出 hap 包到开发板；
+> - `oh-build-and-run`：构建 hap、签名并在开发板上运行项目；
+
+
+
 ### 烧录一个镜像
 
 > 注意：采用 `upgrade_tool` 烧录工具，当前仅适用于 rk3568；
