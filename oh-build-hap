@@ -1,0 +1,37 @@
+#!/bin/sh
+# @author SJTU-XHW
+# @file oh-build-hap
+
+YES=0
+PROJ_DIR=`pwd`
+while getopts "yd:" arg
+do
+    case $arg in
+    y)
+        YES=1
+        ;;
+    d)
+        PROJ_DIR=$OPTARG
+        ;;
+    ?)
+        echo "Unknown argument: $arg. Ignored."
+        ;;
+    esac
+done
+
+if [ "$YES" -eq 0 ]; then
+    read -p "Make sure this is the root directory for the OH Project that you want: $PROJ_DIR (y/n) " CUR_ANS                                                                                     
+else                                                                                                                                                                                          
+    CUR_ANS="y"                                                                                                                                                                               
+fi
+
+cd $PROJ_DIR
+
+if [ "$CUR_ANS" = "y" ]; then
+    ./hvigorw assembleHap
+    if [ $# -eq 0 ]; then
+        echo "Tips. Use -d option to debug hvigor build"
+    fi
+else
+    echo "Not confirmed."
+fi

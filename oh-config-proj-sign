@@ -1,0 +1,149 @@
+#!/bin/sh
+# @author SJTU-XHW
+# @file oh-config-proj-sign
+
+set -e
+
+YES=0
+PROJ_DIR=`pwd`
+while getopts "yd:" arg
+do
+    case $arg in
+    y)
+        YES=1
+        ;;
+    d)
+        PROJ_DIR=$OPTARG
+        ;;
+    ?)
+        echo "Unknown argument: $arg. Ignored."
+        ;;
+    esac
+done
+
+if [ "$YES" -eq 0 ]; then
+    read -p "Make sure this is the root directory for the OH Project that you want: $PROJ_DIR (y/n) " CUR_ANS                                                                                     
+else                                                                                                                                                                                          
+    CUR_ANS="y"                                                                                                                                                                               
+fi
+
+cd $PROJ_DIR
+
+if [ "$CUR_ANS" != "y" ]; then
+    echo "Not confirmed."
+    exit 0
+fi
+
+if [ -z $OHOS_SDK ]; then
+    echo "Please set env OHOS_SDK first!"
+fi
+
+SHELL_DIR=$(dirname $(readlink -f "$0"))
+SHELL_NAME=$(basename $(readlink -f "$0"))
+
+DEFAULT_PWD=`cat /proc/sys/kernel/random/uuid`
+OFFICIAL_KEY_PWD="123456"
+OFFICIAL_KEYSTORE_PWD="123456"
+# Provide root & sub-certificates
+SIGN_CERT_DIR="${SHELL_DIR}/oh-sign-certs"
+# Provide Project-Relevant Certificates Storage
+SIGN_CERT_REPO="${SIGN_CERT_DIR}/repo"
+mkdir -pv ${SIGN_CERT_REPO}
+# Provide SIGN_TOOL & Profile certificates
+SIGN_TOOL_DIR=${OHOS_SDK}/toolchains/lib
+SIGN_TOOL=${SIGN_TOOL_DIR}/hap-sign-tool.jar
+
+KEY_ALIAS=""
+KEY_ALIAS_CACHE="`pwd`/.hvigor/key_alias"
+if [ -f $KEY_ALIAS_CACHE ]; then
+    SKIP_CONFIG=1
+else
+    SKIP_CONFIG=0
+fi
+
+if [ $SKIP_CONFIG -eq 0 ]; then
+
+
+while :
+do
+    read -p "[$SHELL_NAME] Input key alias (ctrl-c to quit): " KEY_ALIAS
+    isDuplicated=0
+    for file in $(ls ${SIGN_CERT_REPO}/)
+    do
+        if [ $file = $KEY_ALIAS ]; then
+            isDuplicated=1
+	    break
+        fi
+    done
+    if [ $isDuplicated -eq 1 ]; then
+        echo "Warning: Key alias duplicated: $KEY_ALIAS.\nUse the exist certificates, which means that you should use original password for the keys later."
+	break
+    elif [ -z $KEY_ALIAS ]; then
+	echo "Empty key alias. Rename it first."
+    else
+        break
+    fi
+done
+PROJ_CERT_DIR="${SIGN_CERT_REPO}/${KEY_ALIAS}"
+mkdir -pv ${PROJ_CERT_DIR}
+
+MODULE_NAME=$(python3 ${SHELL_DIR}/print-modulename.py `pwd`)
+BUNDLE_NAME=$(python3 ${SHELL_DIR}/print-bundlename.py `pwd`)
+
+read -p "[$SHELL_NAME] Input key password (ctrl-c to quit, enter to use default password): " KEY_PWD
+read -p "[$SHELL_NAME] Input keystore password (ctrl-c to quit, enter to use default password): " KEYSTORE_PWD
+read -p "[$SHELL_NAME] Input validity (default 3650, unit day): " VALIDITY
+
+if [ -z $KEY_PWD ]; then
+    KEY_PWD=$DEFAULT_PWD
+fi
+if [ -z $KEYSTORE_PWD ]; then
+    KEYSTORE_PWD=$DEFAULT_PWD
+fi
+if [ -z $VALIDITY ]; then
+    VALIDITY=3650
+fi
+
+java -jar ${SIGN_TOOL} generate-keypair -keyAlias "${KEY_ALIAS}" -keyAlg "ECC" -keySize "NIST-P-256" -keystoreFile "${PROJ_CERT_DIR}/${KEY_ALIAS}.p12" -keyPwd "${KEY_PWD}" -keystorePwd "${KEYSTORE_PWD}"
+echo "Generated application key pair store (key=${KEY_ALIAS}) -> ${PROJ_CERT_DIR}/${KEY_ALIAS}.p12"
+
+java -jar ${SIGN_TOOL} generate-csr -keyAlias "${KEY_ALIAS}" -keyPwd "${KEY_PWD}" -subject "C=CN,O=OpenHarmony,OU=OpenHarmony Team,CN=OpenHarmony Application Release" -signAlg "SHA256withECDSA" -keystoreFile "${PROJ_CERT_DIR}/${KEY_ALIAS}.p12" -keystorePwd "${KEYSTORE_PWD}" -outFile "${PROJ_CERT_DIR}/${KEY_ALIAS}.csr"
+echo "Generated certificate signature request for key ${KEY_ALIAS} in ${PROJ_CERT_DIR}/${KEY_ALIAS}.p12 -> ${PROJ_CERT_DIR}/${KEY_ALIAS}.csr"
+
+# Use both the generated keystore and official OpenHarmony private key (${SIGN_TOOL_DIR}/OpenHarmony.p12)
+java -jar ${SIGN_TOOL} generate-app-cert -keyAlias "${KEY_ALIAS}" -signAlg "SHA256withECDSA"  -issuer "C=CN,O=OpenHarmony,OU=OpenHarmony Team,CN= OpenHarmony Application CA" -issuerKeyAlias "openharmony application ca" -subject "C=CN,O=OpenHarmony,OU=OpenHarmony Team,CN=OpenHarmony Application Release" -keystoreFile "${PROJ_CERT_DIR}/${KEY_ALIAS}.p12" -issuerKeystoreFile "${SIGN_TOOL_DIR}/OpenHarmony.p12" -subCaCertFile "${SIGN_CERT_DIR}/subCA.cer" -rootCaCertFile "${SIGN_CERT_DIR}/rootCA.cer" -outForm "certChain" -outFile "${PROJ_CERT_DIR}/${KEY_ALIAS}.pem" -keyPwd ${KEY_PWD} -keystorePwd ${KEYSTORE_PWD} -issuerKeyPwd ${OFFICIAL_KEY_PWD} -issuerKeystorePwd ${OFFICIAL_KEYSTORE_PWD} -validity ${VALIDITY}
+echo "Generated application signing certificate from keystore files (${SIGN_TOOL_DIR}/OpenHarmony.p12, ${PROJ_CERT_DIR}/${KEY_ALIAS}.p12) -> ${PROJ_CERT_DIR}/${KEY_ALIAS}.pem"
+
+# Use both generated CSR and official OpenHarmony private key (${SIGN_TOOL_DIR}/OpenHarmony.p12)
+keytool -gencert -alias "OpenHarmony Application CA" -infile "${PROJ_CERT_DIR}/${KEY_ALIAS}.csr" -outfile "${PROJ_CERT_DIR}/${KEY_ALIAS}.cer" -keystore "${SIGN_TOOL_DIR}/OpenHarmony.p12" -sigalg SHA384withECDSA -storepass ${OFFICIAL_KEYSTORE_PWD} -ext KeyUsage:"critical=digitalSignature" -validity ${VALIDITY} -rfc
+echo "Generated application signing certificate from CSR & keystore (${SIGN_TOOL_DIR}/OpenHarmony.p12, ${PROJ_CERT_DIR}/${KEY_ALIAS}.csr) -> ${PROJ_CERT_DIR}/${KEY_ALIAS}.cer"
+
+# Use both the generated keystore and official OpenHarmony private key (${SIGN_TOOL_DIR}/OpenHarmony.p12)
+java -jar ${SIGN_TOOL} generate-profile-cert -keyAlias "${KEY_ALIAS}" -signAlg "SHA256withECDSA"  -issuer "C=CN,O=OpenHarmony,OU=OpenHarmony Team,CN= OpenHarmony Application CA" -issuerKeyAlias "openharmony application ca" -subject "C=CN,O=OpenHarmony,OU=OpenHarmony Team,CN=OpenHarmony Application Release" -keystoreFile "${PROJ_CERT_DIR}/${KEY_ALIAS}.p12" -issuerKeystoreFile "${SIGN_TOOL_DIR}/OpenHarmony.p12" -subCaCertFile "${SIGN_CERT_DIR}/subCA.cer" -rootCaCertFile "${SIGN_CERT_DIR}/rootCA.cer" -outForm "certChain" -outFile "${PROJ_CERT_DIR}/${KEY_ALIAS}-profile.pem" -keyPwd ${KEY_PWD} -keystorePwd ${KEYSTORE_PWD} -issuerKeyPwd ${OFFICIAL_KEY_PWD} -issuerKeystorePwd ${OFFICIAL_KEYSTORE_PWD} -validity ${VALIDITY}
+
+
+cp ${SIGN_TOOL_DIR}/UnsgnedReleasedProfileTemplate.json ${PROJ_CERT_DIR}/UnsgnedReleasedProfileTemplate.json
+python3 ${SHELL_DIR}/oh-config-profile-template.py ${PROJ_CERT_DIR}/UnsgnedReleasedProfileTemplate.json ${BUNDLE_NAME}
+echo "Generated profile template -> ${PROJ_CERT_DIR}/UnsgnedReleasedProfileTemplate.json"
+## Use official OpenHarmony private key (${SIGN_TOOL_DIR}/OpenHarmony.p12)
+#java -jar ${SIGN_TOOL} sign-profile -keyAlias "openharmony application profile release" -signAlg "SHA256withECDSA" -mode "localSign" -profileCertFile "${SIGN_TOOL_DIR}/OpenHarmonyProfileRelease.pem" -inFile "${SIGN_TOOL_DIR}/UnsgnedReleasedProfileTemplate.json" -keystoreFile "${SIGN_TOOL_DIR}/OpenHarmony.p12" -outFile "${PROJ_CERT_DIR}/${KEY_ALIAS}-profile.p7b" -keyPwd ${OFFICIAL_KEY_PWD} -keystorePwd ${OFFICIAL_KEYSTORE_PWD}
+java -jar ${SIGN_TOOL} sign-profile -keyAlias "openharmony application profile release" -signAlg "SHA256withECDSA" -mode "localSign" -profileCertFile "${SIGN_TOOL_DIR}/OpenHarmonyProfileRelease.pem" -inFile "${PROJ_CERT_DIR}/UnsgnedReleasedProfileTemplate.json" -keystoreFile "${SIGN_TOOL_DIR}/OpenHarmony.p12" -outFile "${PROJ_CERT_DIR}/${KEY_ALIAS}-profile.p7b" -keyPwd ${OFFICIAL_KEY_PWD} -keystorePwd ${OFFICIAL_KEYSTORE_PWD}
+#java -jar ${SIGN_TOOL} sign-profile -keyAlias "${KEY_ALIAS}" -signAlg "SHA256withECDSA" -mode "localSign" -profileCertFile "${PROJ_CERT_DIR}/${KEY_ALIAS}-profile.pem" -inFile "${SIGN_TOOL_DIR}/UnsgnedReleasedProfileTemplate.json" -keystoreFile "${PROJ_CERT_DIR}/${KEY_ALIAS}.p12" -outFile "${PROJ_CERT_DIR}/${KEY_ALIAS}-profile.p7b" -keyPwd ${KEY_PWD} -keystorePwd ${KEYSTORE_PWD}
+echo "Signed application profile with (${SIGN_TOOL_DIR}/OpenHarmony.p12, ${PROJ_CERT_DIR}/UnsgnedReleasedProfileTemplate.json) -> ${PROJ_CERT_DIR}/${KEY_ALIAS}-profile.p7b"
+
+# HUAWEI buggy
+#python3 ${SHELL_DIR}/oh-config-proj-sign.py "`pwd`" "${PROJ_CERT_DIR}/${KEY_ALIAS}.pem" "${KEYSTORE_PWD}" "${KEY_ALIAS}" "${KEY_PWD}" "${PROJ_CERT_DIR}/${KEY_ALIAS}-profile.p7b" "SHA256withECDSA" "${PROJ_CERT_DIR}/${KEY_ALIAS}.p12"
+echo "Configured `pwd`/build-profile.json5 with existing certifacates\nFinished Project Signing Configurations."
+
+echo "KEY_ALIAS=${KEY_ALIAS}\nPROJ_CERT_DIR=${PROJ_CERT_DIR}\nKEY_PWD=${KEY_PWD}\nKEYSTORE_PWD=${KEYSTORE_PWD}\nMODULE_NAME=${MODULE_NAME}\n" > ${KEY_ALIAS_CACHE}
+
+else
+echo "Use old signing configurations for the project."
+# Source
+. ${KEY_ALIAS_CACHE}
+fi
+
+
+java -jar ${SIGN_TOOL} sign-app -keyAlias ${KEY_ALIAS} -signAlg "SHA256withECDSA" -mode "localSign" -appCertFile "${PROJ_CERT_DIR}/${KEY_ALIAS}.pem" -profileFile "${PROJ_CERT_DIR}/${KEY_ALIAS}-profile.p7b" -inFile "`pwd`/${MODULE_NAME}/build/default/outputs/default/${MODULE_NAME}-default-unsigned.hap" -keystoreFile "${PROJ_CERT_DIR}/${KEY_ALIAS}.p12" -outFile "`pwd`/${MODULE_NAME}/build/default/outputs/default/${MODULE_NAME}-default-signed.hap" -keyPwd ${KEY_PWD} -keystorePwd ${KEYSTORE_PWD} -signCode "1"
+echo "\nSigned the hap of the module ${MODULE_NAME}: `pwd`/${MODULE_NAME}/build/default/outputs/default/${MODULE_NAME}-default-unsigned.hap -> `pwd`/${MODULE_NAME}/build/default/outputs/default/${MODULE_NAME}-default-signed.hap"
+

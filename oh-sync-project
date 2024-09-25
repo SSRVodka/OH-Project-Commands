@@ -1,0 +1,52 @@
+#!/bin/sh
+# @author SJTU-XHW
+# @file oh-sync-project
+
+YES=0
+PROJ_DIR=`pwd`
+while getopts "yd:" arg
+do
+    case $arg in
+    y)
+        YES=1
+        ;;
+    d)
+        PROJ_DIR=$OPTARG
+        ;;
+    ?)
+        echo "Unknown argument: $arg. Ignored."
+        ;;
+    esac
+done
+
+if [ "$YES" -eq 0 ]; then
+    read -p "Make sure this is the root directory for the OH Project that you want: $PROJ_DIR (y/n) " CUR_ANS                                                                                     
+else                                                                                                                                                                                          
+    CUR_ANS="y"                                                                                                                                                                               
+fi
+
+cd $PROJ_DIR
+
+if [ -z $OHOS_SDK ]; then
+    echo "Please set env OHOS_SDK first!"
+    exit 1
+fi
+
+if [ "$CUR_ANS" = "y" ]; then
+    _OHOS_SDK=`dirname ${OHOS_SDK}`
+    if [ -f "local.properties" ]; then
+        SDK_ROOT_WITHOUT_VERSION=`cat local.properties | awk -F "=" '{print $NF}'`
+	if [ "${SDK_ROOT_WITHOUT_VERSION}" != "${_OHOS_SDK}" ]; then
+            echo "[ERROR] Inconsistency between SDK path and project local.properties configuration: \n${SDK_ROOT_WITHOUT_VERSION} vs ${_OHOS_SDK}"
+	    exit 1
+	fi
+    else
+        echo "sdk.dir=${_OHOS_SDK}" > local.properties
+    fi
+    ./hvigorw --sync -p product=default --parallel --incremental $@
+    if [ $# -eq 0 ]; then
+        echo "Tips. Use -d option to debug hvigor sync"
+    fi
+else
+    echo "Not confirmed."
+fi

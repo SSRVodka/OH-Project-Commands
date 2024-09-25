@@ -1,0 +1,10 @@
+#!/bin/sh
+# @author SJTU-XHW
+# @file oh-flash
+
+SHELL_DIR=$(dirname $(readlink -f "$0"))
+
+#read -p "Input the directory of the image: " DIR
+#python3 $SHELL_DIR/oh-flash.py $DIR
+python3 $SHELL_DIR/oh-flash.py $@
+

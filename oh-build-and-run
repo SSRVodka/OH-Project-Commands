@@ -1,0 +1,52 @@
+#!/bin/sh
+# @author SJTU-XHW
+# @file oh-build-and-run
+
+set -e
+
+YES=0
+PROJ_DIR=`pwd`
+while getopts "yd:" arg
+do
+    case $arg in
+    y)
+        YES=1
+	    ;;
+    d)
+        PROJ_DIR=$OPTARG
+        ;;
+    ?)
+        echo "Unknown argument: $arg. Ignored."
+	    ;;
+    esac
+done
+
+if [ "$YES" -eq 0 ]; then
+    read -p "Make sure this is the root directory for the OH Project that you want: $PROJ_DIR (y/n) " CUR_ANS
+else
+    CUR_ANS="y"
+fi
+
+cd $PROJ_DIR
+
+if [ "$CUR_ANS" != "y" ]; then
+    echo "Not confirmed."
+    exit 0
+fi
+
+SHELL_DIR=$(dirname $(readlink -f "$0"))
+SHELL_NAME=$(basename $(readlink -f "$0"))
+BUNDLE_NAME=$(python3 ${SHELL_DIR}/print-bundlename.py `pwd`)
+MODULE_NAME=$(python3 ${SHELL_DIR}/print-modulename.py `pwd`)
+ABILITY_NAME=$(python3 ${SHELL_DIR}/print-abilityname.py `pwd` ${MODULE_NAME})
+
+${SHELL_DIR}/oh-build-hap -y
+${SHELL_DIR}/oh-sign-hap -y
+
+hdc shell aa force-stop ${BUNDLE_NAME}
+hdc shell bm clean -n ${BUNDLE_NAME} -c
+hdc shell bm clean -n ${BUNDLE_NAME} -d
+
+${SHELL_DIR}/oh-install-hap -y
+hdc shell aa start -a ${ABILITY_NAME} -b ${BUNDLE_NAME}
+
