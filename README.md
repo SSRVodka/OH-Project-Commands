@@ -50,7 +50,7 @@
 
 ## 注意事项（必读）
 
-- 由于 SDK API 的频繁变动，不保证代码兼容性。经过测试，本项目适用于 API 11、API 12 两个版本的 OpenHarmony SDK；
+- 由于 SDK API 的频繁变动，不保证代码兼容性。经过测试，本分支适用于 API 14 版本的 OpenHarmony SDK（API 11/12 也支持，参见仓库分支）；
 
 - 在 `$OHOS_SDK` 上层目录（即不包含 API 版本号的 SDK 根目录）下，必须要有 `licenses/`（官网下载 public SDK 时会附带），否则官方不允许使用 SDK，如下图所示：
 

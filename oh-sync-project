@@ -3,6 +3,7 @@
 # @file oh-sync-project
 
 YES=0
+SRC_DIR=$(dirname $(readlink -f $0))
 PROJ_DIR=`pwd`
 while getopts "yd:" arg
 do
@@ -43,7 +44,7 @@ if [ "$CUR_ANS" = "y" ]; then
     else
         echo "sdk.dir=${_OHOS_SDK}" > local.properties
     fi
-    ./hvigorw --sync -p product=default --parallel --incremental $@
+    ${SRC_DIR}/tools/hvigor/bin/hvigorw --sync -p product=default --parallel --incremental $@
     if [ $# -eq 0 ]; then
         echo "Tips. Use -d option to debug hvigor sync"
     fi

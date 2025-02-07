@@ -1,1 +1,5 @@
 oh-sign-certs/repo/*
+/**/node_modules/**
+.idea
+__pycache__
+binary_cache

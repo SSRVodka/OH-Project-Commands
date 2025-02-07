@@ -88,7 +88,6 @@ PROJ_CERT_DIR="${SIGN_CERT_REPO}/${KEY_ALIAS}"
 mkdir -pv ${PROJ_CERT_DIR}
 
 MODULE_NAME=$(python3 ${SHELL_DIR}/print-modulename.py `pwd`)
-BUNDLE_NAME=$(python3 ${SHELL_DIR}/print-bundlename.py `pwd`)
 
 read -p "[$SHELL_NAME] Input key password (ctrl-c to quit, enter to use default password): " KEY_PWD
 read -p "[$SHELL_NAME] Input keystore password (ctrl-c to quit, enter to use default password): " KEYSTORE_PWD
@@ -123,7 +122,7 @@ java -jar ${SIGN_TOOL} generate-profile-cert -keyAlias "${KEY_ALIAS}" -signAlg "
 
 
 cp ${SIGN_TOOL_DIR}/UnsgnedReleasedProfileTemplate.json ${PROJ_CERT_DIR}/UnsgnedReleasedProfileTemplate.json
-python3 ${SHELL_DIR}/oh-config-profile-template.py ${PROJ_CERT_DIR}/UnsgnedReleasedProfileTemplate.json ${BUNDLE_NAME}
+python3 ${SHELL_DIR}/oh-config-profile-template.py ${PROJ_DIR} ${PROJ_CERT_DIR}/UnsgnedReleasedProfileTemplate.json
 echo "Generated profile template -> ${PROJ_CERT_DIR}/UnsgnedReleasedProfileTemplate.json"
 ## Use official OpenHarmony private key (${SIGN_TOOL_DIR}/OpenHarmony.p12)
 #java -jar ${SIGN_TOOL} sign-profile -keyAlias "openharmony application profile release" -signAlg "SHA256withECDSA" -mode "localSign" -profileCertFile "${SIGN_TOOL_DIR}/OpenHarmonyProfileRelease.pem" -inFile "${SIGN_TOOL_DIR}/UnsgnedReleasedProfileTemplate.json" -keystoreFile "${SIGN_TOOL_DIR}/OpenHarmony.p12" -outFile "${PROJ_CERT_DIR}/${KEY_ALIAS}-profile.p7b" -keyPwd ${OFFICIAL_KEY_PWD} -keystorePwd ${OFFICIAL_KEYSTORE_PWD}

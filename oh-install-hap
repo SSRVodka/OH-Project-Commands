@@ -6,7 +6,8 @@ set -e
 
 YES=0
 PROJ_DIR=`pwd`
-while getopts "yd:" arg
+DEVICE_KEY=""
+while getopts "yd:t:" arg
 do
     case $arg in
     y)
@@ -14,6 +15,9 @@ do
         ;;
     d)
         PROJ_DIR=$OPTARG
+        ;;
+    t)
+        DEVICE_KEY=$OPTARG
         ;;
     ?)
         echo "Unknown argument: $arg. Ignored."
@@ -39,6 +43,14 @@ SHELL_NAME=$(basename $(readlink -f "$0"))
 BUNDLE_NAME=$(python3 ${SHELL_DIR}/print-bundlename.py `pwd`)
 MODULE_NAME=$(python3 ${SHELL_DIR}/print-modulename.py `pwd`)
 
+if [ -z "${DEVICE_KEY}" ]; then
+
 hdc uninstall ${BUNDLE_NAME}
 hdc install `pwd`/${MODULE_NAME}/build/default/outputs/default/${MODULE_NAME}-default-signed.hap
 
+else
+
+hdc -t ${DEVICE_KEY} uninstall ${BUNDLE_NAME}
+hdc -t ${DEVICE_KEY} install `pwd`/${MODULE_NAME}/build/default/outputs/default/${MODULE_NAME}-default-signed.hap
+
+fi

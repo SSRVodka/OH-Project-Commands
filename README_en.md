@@ -45,7 +45,7 @@ So this project plans to solve this problem, from **source code compilation, ima
 
 ## Note implementation (must read)
 
-- Due to frequent changes in the SDK API, code compatibility is not guaranteed. After testing, this project works with API 11 and API 12 versions of OpenHarmony SDK;
+- Due to frequent changes in the SDK API, code compatibility is not guaranteed. After testing, this project works with API 14 version of OpenHarmony SDK (API 12 is also supported, see branches in this repo);
 
 - Under `$OHOS_SDK` upper directory (i.e. the root directory of the SDK which does not contain the API version number), there must be `licenses/` (which will be attached when you download the public SDK from the official website), or else the SDK is not allowed to be used by the official government, as shown in the following figure:
 
