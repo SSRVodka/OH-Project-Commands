@@ -1,0 +1,130 @@
+#!/bin/bash
+# @author SJTU-XHW
+# @file oh-hiperf-record
+
+set -e
+
+YES=0
+PROJ_DIR=`pwd`
+while getopts "yd:" arg
+do
+    case $arg in
+    y)
+        YES=1
+        ;;
+    d)
+        PROJ_DIR=$OPTARG
+        ;;
+    ?)
+        echo "Unknown argument: $arg. Ignored."
+        ;;
+    esac
+done
+
+if [ "$YES" -eq 0 ]; then
+    read -p "Make sure this is the root directory for the OH Project that you want: $PROJ_DIR (y/n) " CUR_ANS                                                                                     
+else                                                                                                                                                                                          
+    CUR_ANS="y"                                                                                                                                                                               
+fi
+
+cd $PROJ_DIR
+if [ "$CUR_ANS" != "y" ]; then
+    echo "Not confirmed."
+    exit 0
+fi
+
+check_hdc() {
+	res=`which hdc`
+	if [ $? -ne 0 ] || [ -z "$res" ]; then
+		echo "No HDC tools found in PATH."
+		exit 1
+	fi
+}
+
+check_device() {
+	res=`hdc list targets`
+	echo "select current device: $res"
+	if [[ "$res" =~ "Empty" ]]; then
+		echo "No device is connected."
+		exit 1
+	fi
+}
+
+APP_WAITING_TIME=15	# seconds
+OUTPUT_NAME="output.perfdata"
+OUTPUT_REPORT="hiperf-report.html"
+SHELL_DIR=$(dirname $(readlink -f $0))
+
+check_hdc
+check_device
+
+echo -e "\n----- Record Configurations -----\n"
+
+read -p "Record Duration (second, default 10): " DURATION
+read -p "Record Frequency (Hz, default 4000): " REC_FREQ
+hdc shell hiperf list hw
+hdc shell hiperf list sw
+echo "Choose Events (default hw-cpu-cycles) above."
+read -p "[Tips] Split with comma when you choose multiple events. Append ':u'/':k' to spec address space: " REC_EVENT
+#read -p "Listen at CPU ID (split with comma, default all): " CPU_IDs
+#read -p "Set Sample Period (default 1): " SAMPLE_PERIOD
+
+USE_DEFAULT_EVENT=0
+
+APP_PACK_NAME=$(python3 $SHELL_DIR/print-bundlename.py `pwd`)
+
+if [ -z "$DURATION" ]; then
+	DURATION="10"
+fi
+if [ -z "$REC_FREQ" ]; then
+	REC_FREQ="4000"
+fi
+if [ -z "$REC_EVENT" ]; then
+	USE_DEFAULT_EVENT=1
+fi
+#if [ -z "$SAMPLE_PERIOD" ]; then
+#	SAMPLE_PERIOD="1"
+#fi
+
+RECORD_OPTIONS=""
+if [ $USE_DEFAULT_EVENT -eq 0 ]; then
+	#RECORD_OPTIONS="--app $APP_PACK_NAME -d $DURATION -f $REC_FREQ -e $REC_EVENT --period $SAMPLE_PERIOD"
+	RECORD_OPTIONS="-s dwarf -d $DURATION -f $REC_FREQ -e $REC_EVENT"
+else
+	#RECORD_OPTIONS="--app $APP_PACK_NAME -d $DURATION -f $REC_FREQ --period $SAMPLE_PERIOD"
+	RECORD_OPTIONS="-s dwarf -d $DURATION -f $REC_FREQ"
+fi
+
+echo "Record Options: --app $APP_PACK_NAME $RECORD_OPTIONS"
+echo -e "\n----- End of Configurations -----\n"
+
+cd $SHELL_DIR/hiperf
+
+# ignore empty search
+set +e
+find_app=$(echo `hdc shell ps -ef` | grep ${APP_PACK_NAME})
+set -e
+
+if [ -z "$find_app" ]; then
+	read -p "Specific app ($APP_PACK_NAME) is not running. Do you want to start it now? ([y]/n) " _ans
+	if [ "$_ans" == "n" ]; then
+		echo "Operation abort."
+		exit 0
+	fi
+	$SHELL_DIR/oh-build-and-run -y -d $PROJ_DIR
+	echo "Waiting for app to start... (${APP_WAITING_TIME} s)"
+	sleep ${APP_WAITING_TIME}
+	check_app=`hdc shell ps -ef | grep ${APP_PACK_NAME}`
+	if [ -z "$check_app" ]; then
+		echo "${APP_PACK_NAME} crashed. Try restart the app manually."
+		exit 0
+	fi
+fi
+
+python3 command_script.py -app $APP_PACK_NAME -r "$RECORD_OPTIONS" -o $OUTPUT_NAME
+python3 recv_binary_cache.py -i $OUTPUT_NAME -l unstripped/linux/x86_64
+python3 make_report.py -i $OUTPUT_NAME -r $OUTPUT_REPORT
+
+mv $OUTPUT_NAME $OUTPUT_REPORT $PROJ_DIR
+echo "Move profiling files: {$OUTPUT_NAME, $OUTPUT_REPORT} -> $PROJ_DIR"
+

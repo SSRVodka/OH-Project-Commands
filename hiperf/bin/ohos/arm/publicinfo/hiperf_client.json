@@ -1,0 +1,13 @@
+{
+  "label": "//developtools/hiperf/interfaces/innerkits/native:hiperf_client",
+  "public_configs": [{
+    "label": "//developtools/hiperf/interfaces/innerkits/native:hiperf_client_config",
+    "include_dirs": [
+      "//developtools/hiperf/interfaces/innerkits/native/include/",
+      "//developtools/hiperf/include/"
+    ]
+  }],
+  "public": [ "*" ],
+  "out_name":"libhiperf_client.z.so",
+  "type":"shared_library"
+}
