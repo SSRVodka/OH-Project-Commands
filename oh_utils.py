@@ -48,6 +48,9 @@ def get_module_permissions(project_root: str, module_name: str) -> List[str]:
         json5_str = module_conf.read()
         json_str = remove_comments(json5_str)
         module_conf_data = json.loads(json_str)
-        requested_perms = module_conf_data["module"]["requestPermissions"]
+        module_root = module_conf_data["module"]
+        if module_root.get("requestPermissions") is None:
+            return []
+        requested_perms = module_root["requestPermissions"]
         return [perm["name"] for perm in requested_perms]
 
