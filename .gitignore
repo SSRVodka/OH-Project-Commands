@@ -3,3 +3,4 @@ oh-sign-certs/repo/*
 .idea
 __pycache__
 binary_cache
+tools/

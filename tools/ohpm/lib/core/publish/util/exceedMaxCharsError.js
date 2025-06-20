@@ -1,1 +1,0 @@
-"use strict";Object.defineProperty(exports,"__esModule",{value:!0}),exports.exceedMaxCharsError=void 0;const e=require("../../../common/message");exports.exceedMaxCharsError=function(r,o){return(0,e.format)(e.Messages.Validator.FieldLengthError,{fieldName:`${r}`,length:`${o}`})};

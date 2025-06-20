@@ -19,6 +19,7 @@
 
 1. 将本项目 clone / 下载解压后，将项目根目录加入 `$PATH` 环境变量（建议写入 `.bashrc/.zshrc`）；
 2. 准备 Java（1.8 以上）、Python3（3.6 以上），确保能在命令行调用 `java` 和 `python3`；
+3. Python 执行 `install.py` 来安装命令行脚本必须的二进制工具。您可以使用 `--override` 参数来覆盖之前的安装。
 
 
 
@@ -50,7 +51,7 @@
 
 ## 注意事项（必读）
 
-- 由于 SDK API 的频繁变动，不保证代码兼容性。经过测试，本分支适用于 API 14 版本的 OpenHarmony SDK（API 11/12 也支持，参见仓库分支）；
+- 由于 SDK API 的频繁变动，不保证代码兼容性。经过测试，本分支适用于 API 15 版本的 OpenHarmony SDK（API 11/12/14 也支持，参见仓库分支）；
 
 - 在 `$OHOS_SDK` 上层目录（即不包含 API 版本号的 SDK 根目录）下，必须要有 `licenses/`（官网下载 public SDK 时会附带），否则官方不允许使用 SDK，如下图所示：
 

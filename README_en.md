@@ -16,6 +16,7 @@ So this project plans to solve this problem, from **source code compilation, ima
 
 1. Unzip the project clone / download and add the project root directory to the `$PATH` environment variable (`.bashrc/.zshrc` is recommended). 2;
 2. Prepare Java (1.8+) and Python3 (3.6+), and make sure you can call `java` and `python3` from the command line;
+3. Execute `install.py` (`python3 install.py [--override]`) to install the binary tools necessary for command-line scripts. You can use the `--override` parameter to override previous installations.
 
 
 
@@ -45,7 +46,7 @@ So this project plans to solve this problem, from **source code compilation, ima
 
 ## Note implementation (must read)
 
-- Due to frequent changes in the SDK API, code compatibility is not guaranteed. After testing, this project works with API 14 version of OpenHarmony SDK (API 12 is also supported, see branches in this repo);
+- Due to frequent changes in the SDK API, code compatibility is not guaranteed. After testing, this project works with API 15 version of OpenHarmony SDK (API 11/12/14 is also supported, see branches in this repo);
 
 - Under `$OHOS_SDK` upper directory (i.e. the root directory of the SDK which does not contain the API version number), there must be `licenses/` (which will be attached when you download the public SDK from the official website), or else the SDK is not allowed to be used by the official government, as shown in the following figure:
 
